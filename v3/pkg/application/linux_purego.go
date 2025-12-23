@@ -152,6 +152,7 @@ var (
 	gtkFileChooserSetAction         func(pointer, int)
 	gtkFileChooserSetCreateFolders  func(pointer, bool)
 	gtkFileChooserSetCurrentFolder  func(pointer, string)
+	gtkFileChooserSetCurrentName    func(pointer, string)
 	gtkFileChooserSetSelectMultiple func(pointer, bool)
 	gtkFileChooserSetShowHidden     func(pointer, bool)
 	gtkFileFilterAddPattern         func(pointer, string)
@@ -304,6 +305,7 @@ func init() {
 	purego.RegisterLibFunc(&gtkFileChooserSetAction, gtk, "gtk_file_chooser_set_action")
 	purego.RegisterLibFunc(&gtkFileChooserSetCreateFolders, gtk, "gtk_file_chooser_set_create_folders")
 	purego.RegisterLibFunc(&gtkFileChooserSetCurrentFolder, gtk, "gtk_file_chooser_set_current_folder")
+	purego.RegisterLibFunc(&gtkFileChooserSetCurrentName, gtk, "gtk_file_chooser_set_current_name")
 	purego.RegisterLibFunc(&gtkFileChooserSetSelectMultiple, gtk, "gtk_file_chooser_set_select_multiple")
 	purego.RegisterLibFunc(&gtkFileChooserSetShowHidden, gtk, "gtk_file_chooser_set_show_hidden")
 	purego.RegisterLibFunc(&gtkFileFilterAddPattern, gtk, "gtk_file_filter_add_pattern")
@@ -1020,7 +1022,7 @@ func windowMove(window pointer, x, y int) {
 	gtkWindowMove(window, x, y)
 }
 
-func runChooserDialog(window pointer, allowMultiple, createFolders, showHidden bool, currentFolder, title string, action int, acceptLabel string, filters []FileFilter) ([]string, error) {
+func runChooserDialog(window pointer, allowMultiple, createFolders, showHidden bool, currentFolder, title string, action int, acceptLabel string, filters []FileFilter, currentName string) ([]string, error) {
 	GtkResponseCancel := 0
 	GtkResponseAccept := 1
 
@@ -1050,6 +1052,11 @@ func runChooserDialog(window pointer, allowMultiple, createFolders, showHidden b
 
 	if currentFolder != "" {
 		gtkFileChooserSetCurrentFolder(fc, currentFolder)
+	}
+
+	const GtkFileChooserActionSave = 1
+	if currentName != "" && action == GtkFileChooserActionSave {
+		gtkFileChooserSetCurrentName(fc, currentName)
 	}
 
 	buildStringAndFree := func(s pointer) string {
@@ -1121,7 +1128,8 @@ func runOpenFileDialog(dialog *OpenFileDialogStruct) ([]string, error) {
 		dialog.title,
 		GtkFileChooserActionOpen,
 		buttonText,
-		dialog.filters)
+		dialog.filters,
+		"")
 }
 
 func runQuestionDialog(parent pointer, options *MessageDialog) int {
@@ -1202,7 +1210,8 @@ func runSaveFileDialog(dialog *SaveFileDialogStruct) (string, error) {
 		dialog.title,
 		GtkFileChooserActionSave,
 		buttonText,
-		dialog.filters)
+		dialog.filters,
+		dialog.filename)
 
 	if err != nil || len(results) == 0 {
 		return "", err
